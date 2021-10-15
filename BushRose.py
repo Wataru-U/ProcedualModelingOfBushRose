@@ -2,7 +2,7 @@ import pymel.core as pm
 import math
 import random
 import Vector3 as v3
-from pymel.core.windows import horizontalLayout
+
 
 
 # 基底節クラス
@@ -45,6 +45,29 @@ class Section :
     def SetLeafDir(self,d) :
         self.LeafDir = d
 
+    def NewBranchDir(self,theta) :
+        ''' 新しい枝の向きを決める　'''
+        # 節の Dir を y 、　pos.xz を x として
+        # 株の外側を 0 とした正規直交基底を作る
+        base_x = v3.Vector3.Normalized(self.Pos)
+        base_y = self.Dir
+        base_x = v3.Vector3.Normalized(base_y.Vertical_xz(base_x))
+        base_z = base_x.Cross(base_y)
+        
+        # 規定を変える前のベクトル
+        d = v3.Vector3(0,0,0)
+        d.x = math.cos(theta) * math.cos(self.LeafDir)
+        d.y = math.sin(theta)
+        d.z = math.cos(theta) * math.sin(self.LeafDir)
+
+
+        # 規定を変換した新しい枝の向き
+        result = v3.Vector3(0,0,0)
+        result += base_x * d.x
+        result += base_y * d.y
+        result += base_z * d.z
+
+        return result
 
 # シュートの節クラス
 class ShootSection(Section) :
@@ -67,11 +90,37 @@ class ShootSection(Section) :
                 if math.tan(inc) > self.DirInc_y_xz \
                 else d
             branch.Append(self.tip(),nextDir,dist+1,l,ph,pw,inc,s,e)
+        else :
+            branch.Vertices.append(self.tip())
 
+# 一般の枝の節クラス
+class OldBranchSection(Section) :
+    def __init__(self, p, d, dist, l, inc, s, e, branch, ph, pw, sn, lSeed=-1, bSeed=-1):
+        super().__init__(p, d, dist, l, inc, s, e, branch, lSeed=lSeed, bSeed=bSeed)
 
+        self.PruneHeight = ph
+        self.PruneWidth = pw
+        self.SectionNum = sn
+        # 次の節を出すかどうか
+        dist_xz = (p.x ** 2 + p.z ** 2) / pw ** 2
+        dist_y = p.y ** 2 / ph ** 2
 
+        # 剪定範囲内 かつ 花がらつみ範囲内　か
+        # 節が短すぎると カーブ が成り立たないので, 短すぎる場合, 剪定範囲超えても少し出す
+        if dist <= sn and dist_xz + dist_y <= 1 :
+            nextDir = \
+                v3.Vector3.WeightedAverage(d,self.IdealDir,self.Strength,dist ** self.WeightExponent) \
+                if math.tan(inc) > self.DirInc_y_xz \
+                else d
+            branch.Append(self.tip(),nextDir,dist+1,l,ph,pw,inc,s,e)
+        else :
+            # 剪定範囲を超えたら
+            if dist_xz + dist_y > 1 :
+                branch.Next = False
+            branch.Vertices.append(self.tip())
+        
 class RoseBranch :
-    def __init__(self,p,d,dist,sl,inc,s,e,cs,hs,thi,rand = True,name = 'Branch'):
+    def __init__(self,p,d,dist,sl,inc,s,e,prob,cs,hs,thi,tree,rand = True,name = 'Branch'):
         self.Vertices = [p,p.WeightedAverage(p + d * sl,100,1)]
         self.Pos = p
         self.Dir = d
@@ -80,8 +129,11 @@ class RoseBranch :
         self.Inclination = inc
         self.Strength = s
         self.WeightExponent = e
+        self.Probability = prob
         self.Name = name
         self.Sections = []
+
+        self.Tree = tree
 
         # 軸と高さの分割
         self.CircleSmoothness = cs
@@ -97,18 +149,29 @@ class RoseBranch :
         それ以外は螺旋状風に '''
         leafDir = 0
         for i in range(len(self.Sections)) :
-            index = len(self.Sections) - i - 1
+            index = i
             item = self.Sections[index]
             # ランダムの振れ幅
             leafDirRange = math.pi / 3 * 2
             leafDir = leafDir + (item.LeafSeed - 0.5) * leafDirRange 
             item.SetLeafDir(leafDir)
+
+            # 次の枝の向き
+            # 花がら摘みで出たら /6 春先なら /2
+            theta = math.pi / 6 if i <= 1 else math.pi / 2
+            nd = item.NewBranchDir(theta)
+            # 先端は下を向かないようにする
+            if i == 0 :
+                while nd.y < 0 :
+                    leafDir += math.pi / 3
+                    item.SetLeafDir(leafDir)
+                    nd = item.NewBranchDir(math.pi / 6)
             leafDir += math.pi / 2
 
 
 class ShootBranch(RoseBranch) :
-    def __init__(self, p, d, dist, sl, inc, s, e, cs, hs, thi, ph, pw, rand=True):
-        super().__init__(p, d, dist, sl, inc, s, e, cs, hs, thi, rand=rand, name = 'Shoot')
+    def __init__(self, p, d, dist, sl, inc, s, e, prob, cs, hs, thi, ph, pw, tree, rand=True):
+        super().__init__(p, d, dist, sl, inc, s, e, prob, cs, hs, thi, tree, rand=rand, name = 'Shoot')
         self.PinchHeight = ph
         self.PinchWidth = pw
 
@@ -116,12 +179,60 @@ class ShootBranch(RoseBranch) :
         self.Sections.append(ShootSection(p,d,1,sl,ph,pw,inc,s,e,self))
         # 葉と次の枝をセット
         self.SetLeaves()
+        for i in range(len(self.Sections)) :
+            index = i
+            item = self.Sections[index]
+            # 次の枝の向き
+            # 花がら摘みで出たら pi/3 春先なら 0
+            theta = math.pi / 3 if i <= 1 else 0
+            nd = item.NewBranchDir(theta)
+            if (i <= 1 or item.BranchSeed * 100 < self.Probability) and nd.y  > 0 :
+                tree.Branches.append( \
+                    OldBranch \
+                        (item.Pos,nd,1,tree.BranchSectionLength,self.Inclination,self.Strength,self.WeightExponent, \
+                        self.Probability,self.CircleSmoothness,tree.BranchSmoothness,tree.BranchThickness, \
+                        tree.PruneHeight,tree.PruneWidth,tree.BranchSectionNum,tree,rand))
 
     
     def Append(self,tip,nd,dist,l,ph,pw,inc,s,e) :
         '''節を引数に引数の節を リストに 追加する'''
         self.Vertices.append(tip)
         self.Sections.append(ShootSection(tip,nd,dist,l,ph,pw,inc,s,e,self))
+
+class OldBranch(RoseBranch) :
+    def __init__(self, p, d, dist, sl, inc, s, e, prob, cs, hs, thi, ph, pw, sn, tree, rand=True, name='Branch'):
+        super().__init__(p, d, dist, sl, inc, s, e, prob, cs, hs, thi, tree, rand=rand, name=name)
+        self.PruneHeight = ph
+        self.PruneWidth = pw
+        self.SectionNum = sn
+        # 花がら摘みで新しい枝が出るかどうか
+        self.Next = True
+
+        
+
+        # 節を追加していく
+        self.Sections.append(ShootSection(p,d,0,sl,ph,pw,inc,s,e,self))
+        self.SetLeaves()
+        for i in range(len(self.Sections)) :
+            index = i
+            item = self.Sections[index]
+            # 次の枝の向き
+            # 花がら摘みで出たら pi/3 春先なら 0
+            theta = math.pi / 3 if i <= 1 else 0
+            nd = item.NewBranchDir(theta)
+            if ((i <= 1 and self.Next) or item.BranchSeed * 100 < self.Probability) and nd.y  > 0 and dist < 4:
+                nb = OldBranch \
+                        (item.Pos,nd,dist+1,tree.BranchSectionLength,self.Inclination,self.Strength,self.WeightExponent, \
+                        self.Probability,self.CircleSmoothness,tree.BranchSmoothness,tree.BranchThickness, \
+                        tree.PruneHeight,tree.PruneWidth,tree.BranchSectionNum,tree,rand)
+                # カーブとして成り立たない場合は入れない
+                if len(nb.Vertices) > 3 :
+                    tree.Branches.append(nb)
+
+    def Append(self,tip,nd,dist,l,ph,pw,inc,s,e) :
+        '''節を引数に引数の節を リストに 追加する'''
+        self.Vertices.append(tip)
+        self.Sections.append(OldBranchSection(tip,nd,dist,l,inc,s,e,self,ph,pw,self.SectionNum))
 
 class BushRoseTree :
     def __init__(self,cs,inc,s,e,prob,lh,sph,spw,ssl,st,ss,sn,bph,bpw,bsn,bsl,bt,bs,fnum,fneck,g,fsn,fsl,ft,fs,rand = True):
@@ -173,7 +284,7 @@ class BushRoseTree :
             hori = random.random() * 2 * math.pi
             vert = random.random() * math.pi / 2
             vec = v3.Vector3.Normalized_hv(hori,vert)
-            self.Branches.append(ShootBranch(v3.Vector3(0,0,0),vec,0,ssl,inc,s,e,cs,ss,st,sph,spw))
+            self.Branches.append(ShootBranch(v3.Vector3(0,0,0),vec,0,ssl,inc,s,e,prob,cs,ss,st,sph,spw,self))
 
     def CreateCurve(self) :
         '''モデルを作る'''

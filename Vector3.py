@@ -1,4 +1,6 @@
 import math
+import copy
+
 class Vector3(object) :
     def __init__(self,x,y,z) :
         self.x = x
@@ -13,7 +15,6 @@ class Vector3(object) :
         '''自身のベクトルを正規化する'''
         sc = abs(self)
         sc = math.sqrt(sc)
-        print(sc)
         if not sc == 0 :
             self.x /= sc
             self.y /= sc
@@ -22,8 +23,9 @@ class Vector3(object) :
 
     def Normalized(a) :
         '''　a を正規化したベクトルを返す '''
-        a.Normalize()
-        return a
+        v = copy.copy(a)
+        v.Normalize()
+        return v
 
     def Dot(self,other) :
         '''self と other の内積を返す'''
