@@ -2,6 +2,7 @@ import pymel.core as pm
 import math
 import random
 import Vector3 as v3
+from pymel.core.general import select
 
 
 
@@ -132,9 +133,6 @@ class newBranchSection(Section) :
                 if math.tan(inc) > self.DirInc_y_xz \
                 else d
             branch.Append(self.tip(),nextDir,dist+1,l,inc,s,e)
-        else :
-            branch.Vertices.append(self.tip())
-
         
 class RoseBranch :
     def __init__(self,p,d,dist,sl,inc,s,e,prob,cs,hs,thi,tree,rand = True,name = 'Branch'):
@@ -244,7 +242,7 @@ class OldBranch(RoseBranch) :
                 if len(nb.Vertices) > 3 :
                     tree.Branches.append(nb)
             elif i <= 1 and not self.Next :
-                tree.Branches.append(newBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,self.Strength,self.WeightExponent,\
+                tree.Branches.append(newBranch(item.Pos,nd,dist+1,tree.FlowerSectionNum,self.Inclination,self.Strength,self.WeightExponent,\
                         self.Probability,self.CircleSmoothness,tree.Flowersmoothness,tree.FlowerThickness,\
                         tree.FlowerSectionNum,tree,rand))
 
@@ -319,55 +317,32 @@ class BushRoseTree :
             vert = random.random() * math.pi / 2
             vec = v3.Vector3.Normalized_hv(hori,vert)
             self.Branches.append(ShootBranch(v3.Vector3(0,0,0),vec,0,ssl,inc,s,e,prob,cs,ss,st,sph,spw,self))
-        
-        # モデル用
-        self.Curves = []
-        self.Cils = []
-        
 
     def CreateCurve(self) :
-        '''カーブを作る'''
-
-        # 初期化
+        '''モデルを作る'''
         self.Curves = []
         self.Cils = []
         i = 0
         for item in self.Branches :
-                name = item.Name + '_' + str(i) + '_'
-                self.Curves.append(pm.curve(name = name + 'CUR',p = [j.Vector() for j in item.Vertices]))
-                i += 1
+            name = item.Name + '_' + str(i) + '_'
+            self.Curves.append(pm.curve(name = name + 'CUR',p = [i.Vector() for i in item.Vertices]))
+            self.Cils.append(pm.polyCylinder(name = name + 'GEO',r = item.Thickness,h = 400,sx = item.CircleSmoothness,sy = item.HeightSmoothness * len(item.Sections)))
+            pm.createCurveWarp(self.Curves[i],self.Cils[i])
+            i += 1
 
+        # シリンダーのエッジをきれいにする
+        for item in self.Cils :
+            cilSoftEdge(item)
         # オブジェクトの名前
         name = self.Name if not self.Name == '' else 'BushRose'
         # グループにして行く
         pm.select(self.Curves)
         self.CurvesGRP = pm.group(n = name + '_Curves_GRP')
-        pm.select(self.CurvesGRP)
-        self.group = pm.group(n = name + '_GRP')
-
-    def SetMesh(self) :
-        '''カーブにメッシュを付ける'''
-        # カーブがない場合
-        if len(self.Curves) == 0 :
-            self.CreateCurve()
-        self.Cils = []
-        
-        i = 0
-        for item in self.Branches :
-            name = item.Name + '_' + str(i) + '_'
-            self.Cils.append(pm.polyCylinder(name = name + 'GEO',r = item.Thickness,h = 400,sx = item.CircleSmoothness,sy = item.HeightSmoothness * len(item.Sections)))
-            pm.createCurveWarp(self.Curves[i],self.Cils[i])
-            i += 1
-        
-        # シリンダーのエッジをきれいにする
-        for item in self.Cils :
-            cilSoftEdge(item)
-        
-        # グループにまとめる
-        name = self.Name if not self.Name == '' else 'BushRose'
         pm.select(self.Cils)
         self.CilsGRP = pm.group(n = name + '_Cils_GRP')
-        pm.parent(self.CilsGRP,self.group)
+        pm.select(self.CurvesGRP)
+        pm.select(self.CilsGRP,add = True)
+        self.group = pm.group(n = name + '_GRP')
 
 
 
@@ -376,13 +351,14 @@ def cilSoftEdge(obj) :
     pm.select(obj)
     # 全体をソフトエッジに
     pm.polySoftEdge(a = 180,ch = 1)
-    pm.select(obj)
     # フェースの数を取る
     l = (pm.polyEvaluate(f = True))
-    # オブジェクトの名前
+    # オブジェクトの名前を取る
     objName = pm.ls(sl = True)
+    name = objName[0].replace('Shape','')
+    # フェースの 上面と底面　のインデックス
     faceNum = '.f[' + str(l-2) + ':' + str(l-1) + ']'
-    # シリンダーの上下をハードエッジに
-    pm.select(objName[0].replace('Shape','') + faceNum)
+    # 上面と底面　を選択
+    pm.select(name + faceNum)
+    # 選択したところだけハードエッジに
     pm.polySoftEdge(a = 0,ch = 1)
-

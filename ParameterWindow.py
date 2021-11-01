@@ -115,10 +115,13 @@ class RoseParameter:
         # window
         self.window = pm.window("RoseWindow", t = "BushRose", w = 546, h = 350)
         pm.columnLayout(adj = True)
+        with pm.horizontalLayout() :
+            pm.text('Name')
+            self.Name = pm.textField('objctName',text = 'BushRose')
 
         with pm.horizontalLayout() :
             pm.text('Random')
-            self.random = pm.checkBox('randomCheckbox', label = '')
+            self.Random = pm.checkBox('randomCheckbox', label = '')
         # 枝の円の分割
         self.Smoothness = pm.intSliderGrp(label='Smoothness', field=True, min=3, max=64, value=smoothness)
         # 枝の傾き
@@ -148,7 +151,8 @@ class RoseParameter:
         tabs.setTabLabel([branchTab,u'Branch'])
         tabs.setTabLabel([flowerBT,u'flowerBranch'])
 
-        pm.button(label = 'Create', command = self.create)
+        pm.button(label = 'Curve', command = self.CreateCurve)
+        pm.button(label = 'Mesh', command = self.CreateMesh)
         
         # ランダム要素　の有無
         # ランダムをなくすと同じパラメータに対していつも同じモデルを返す　予定
@@ -158,16 +162,31 @@ class RoseParameter:
     
     # curveを作る
     # 引数の *args コマンドとして扱う用
-    def create(self,*args) :
-        brt = br.BushRoseTree \
+    def CreateCurve(self,*args) :
+        self.brt = br.BushRoseTree \
             ( \
+                pm.textField(self.Name, q=True, text=True), \
                 self.Smoothness.getValue(), self.Inclination.getValue(), self.Strength.getValue(), self.WeightExponent.getValue(), self.Probability.getValue(), self.LowestHeight.getValue(), \
                 self.ShootParam.pinchHeight.getValue(), self.ShootParam.pinchWidth.getValue(), self.ShootParam.sectionLength.getValue(), self.ShootParam.thickness.getValue(), self.ShootParam.smoothness.getValue(), self.ShootParam.shootNum.getValue(), \
                 self.BranchParam.pruneHeight.getValue(), self.BranchParam.pruneWidth.getValue(), self.BranchParam.sectionNum.getValue(), self.BranchParam.sectionLength.getValue(), self.BranchParam.thickness.getValue(), self.BranchParam.smoothness.getValue(), \
                 self.FlowerBParam.flowerNum.getValue(), self.FlowerBParam.flowerNeck.getValue(), self.FlowerBParam.gravity.getValue(), \
-                self.FlowerBParam.sectionNum.getValue(), self.FlowerBParam.sectionLength.getValue(), self.FlowerBParam.thickness, self.FlowerBParam.smoothness.getValue(), \
-                rand = self.random \
+                self.FlowerBParam.sectionNum.getValue(), self.FlowerBParam.sectionLength.getValue(), self.FlowerBParam.thickness.getValue(), self.FlowerBParam.smoothness.getValue(), \
+                rand = self.Random.getValue() \
             )
-        brt.CreateCurve()
+        self.brt.CreateCurve()
+    
+    def CreateMesh(self,*args) :
+        if self.brt == None :
+            self.brt = br.BushRoseTree \
+                ( \
+                    pm.textField(self.Name, q=True, text=True), \
+                    self.Smoothness.getValue(), self.Inclination.getValue(), self.Strength.getValue(), self.WeightExponent.getValue(), self.Probability.getValue(), self.LowestHeight.getValue(), \
+                    self.ShootParam.pinchHeight.getValue(), self.ShootParam.pinchWidth.getValue(), self.ShootParam.sectionLength.getValue(), self.ShootParam.thickness.getValue(), self.ShootParam.smoothness.getValue(), self.ShootParam.shootNum.getValue(), \
+                    self.BranchParam.pruneHeight.getValue(), self.BranchParam.pruneWidth.getValue(), self.BranchParam.sectionNum.getValue(), self.BranchParam.sectionLength.getValue(), self.BranchParam.thickness.getValue(), self.BranchParam.smoothness.getValue(), \
+                    self.FlowerBParam.flowerNum.getValue(), self.FlowerBParam.flowerNeck.getValue(), self.FlowerBParam.gravity.getValue(), \
+                    self.FlowerBParam.sectionNum.getValue(), self.FlowerBParam.sectionLength.getValue(), self.FlowerBParam.thickness.getValue(), self.FlowerBParam.smoothness.getValue(), \
+                    rand = self.Random.getValue() \
+                )
+        self.brt.SetMesh()
 
 roseParam = RoseParameter()
