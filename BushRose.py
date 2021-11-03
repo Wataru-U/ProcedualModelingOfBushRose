@@ -120,7 +120,7 @@ class OldBranchSection(Section) :
             branch.Vertices.append(self.tip())
 
 # 花枝の節クラス
-class newBranchSection(Section) :
+class NewBranchSection(Section) :
     def __init__(self, p, d, dist, l, inc, s, e, branch, sn, lSeed=-1, bSeed=-1):
         super().__init__(p, d, dist, l, inc, s, e, branch, lSeed=lSeed, bSeed=bSeed)
 
@@ -137,7 +137,7 @@ class newBranchSection(Section) :
 
         
 class RoseBranch :
-    def __init__(self,p,d,dist,sl,inc,s,e,prob,cs,hs,thi,tree,rand = True,name = 'Branch'):
+    def __init__(self,p,d,dist,sl,inc,s,e,prob,fprob,lh,cs,hs,thi,tree,rand = True,name = 'Branch'):
         self.Vertices = [p,p.WeightedAverage(p + d * sl,100,1)]
         self.Pos = p
         self.Dir = d
@@ -147,6 +147,8 @@ class RoseBranch :
         self.Strength = s
         self.WeightExponent = e
         self.Probability = prob
+        self.FlowerBranchProbability = fprob
+        self.LowestHeight = lh
         self.Name = name
         self.Sections = []
 
@@ -163,7 +165,8 @@ class RoseBranch :
         ''' 葉の位置や枝が出るかどうか
         先端の節から行う
         先端は基本外側を向く
-        それ以外は螺旋状風に '''
+        それ以外は螺旋状風に 
+        '''
         leafDir = 0
         for i in range(len(self.Sections)) :
             index = i
@@ -187,8 +190,8 @@ class RoseBranch :
 
 
 class ShootBranch(RoseBranch) :
-    def __init__(self, p, d, dist, sl, inc, s, e, prob, cs, hs, thi, ph, pw, tree, rand=True):
-        super().__init__(p, d, dist, sl, inc, s, e, prob, cs, hs, thi, tree, rand=rand, name = 'Shoot')
+    def __init__(self, p, d, dist, sl, inc, s, e, prob, fprob, lh, cs, hs, thi, ph, pw, tree, rand=True):
+        super().__init__(p, d, dist, sl, inc, s, e, prob, fprob, lh, cs, hs, thi, tree, rand=rand, name = 'Shoot')
         self.PinchHeight = ph
         self.PinchWidth = pw
 
@@ -203,12 +206,22 @@ class ShootBranch(RoseBranch) :
             # 花がら摘みで出たら pi/3 春先なら 0
             theta = math.pi / 3 if i <= 1 else 0
             nd = item.NewBranchDir(theta)
+
+            # 剪定ラインからの割合
+            prune_xz = (item.Pos.x ** 2 + item.Pos.z ** 2) / (tree.PruneWidth ** 2)
+            prune_y = (item.Pos.y ** 2) / (tree.PruneHeight ** 2)
+            prune = prune_xz + prune_y
+
             if (i <= 1 or item.BranchSeed * 100 < self.Probability) and nd.y  > 0 :
                 tree.Branches.append( \
                     OldBranch \
                         (item.Pos,nd,1,tree.BranchSectionLength,self.Inclination,self.Strength,self.WeightExponent, \
-                        self.Probability,self.CircleSmoothness,tree.BranchSmoothness,tree.BranchThickness, \
+                        self.Probability,self.FlowerBranchProbability,self.LowestHeight,self.CircleSmoothness,tree.BranchSmoothness,tree.BranchThickness, \
                         tree.PruneHeight,tree.PruneWidth,tree.BranchSectionNum,tree,rand))
+            elif item.BranchSeed * 100 < self.Probability + self.FlowerBranchProbability and nd.y > 0 and prune > self.LowestHeight ** 2 :
+                tree.Branches.append(NewBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,self.Strength,self.WeightExponent,\
+                        self.Probability,self.CircleSmoothness,tree.Flowersmoothness,tree.FlowerThickness,\
+                        tree.FlowerSectionNum,tree,rand))
 
     
     def Append(self,tip,nd,dist,l,ph,pw,inc,s,e) :
@@ -217,8 +230,8 @@ class ShootBranch(RoseBranch) :
         self.Sections.append(ShootSection(tip,nd,dist,l,ph,pw,inc,s,e,self))
 
 class OldBranch(RoseBranch) :
-    def __init__(self, p, d, dist, sl, inc, s, e, prob, cs, hs, thi, ph, pw, sn, tree, rand=True, name='Branch'):
-        super().__init__(p, d, dist, sl, inc, s, e, prob, cs, hs, thi, tree, rand=rand, name=name)
+    def __init__(self, p, d, dist, sl, inc, s, e, prob,fprob,lh, cs, hs, thi, ph, pw, sn, tree, rand=True, name='Branch'):
+        super().__init__(p, d, dist, sl, inc, s, e, prob,fprob,lh, cs, hs, thi, tree, rand=rand, name=name)
         self.PruneHeight = ph
         self.PruneWidth = pw
         self.SectionNum = sn
@@ -235,16 +248,22 @@ class OldBranch(RoseBranch) :
             # 花がら摘みで出たら pi/3 春先なら 0
             theta = math.pi / 3 if i <= 1 else 0
             nd = item.NewBranchDir(theta)
+
+            # 剪定ラインからの割合
+            prune_xz = (item.Pos.x ** 2 + item.Pos.z ** 2) / (self.PruneWidth ** 2)
+            prune_y = (item.Pos.y ** 2) / (self.PruneHeight ** 2)
+            prune = prune_xz + prune_y
+
             if ((i <= 1 and self.Next) or item.BranchSeed * 100 < self.Probability) and nd.y  > 0 and dist < 4:
                 nb = OldBranch \
                         (item.Pos,nd,dist+1,tree.BranchSectionLength,self.Inclination,self.Strength,self.WeightExponent, \
-                        self.Probability,self.CircleSmoothness,tree.BranchSmoothness,tree.BranchThickness, \
+                        self.Probability,self.FlowerBranchProbability,self.LowestHeight,self.CircleSmoothness,tree.BranchSmoothness,tree.BranchThickness, \
                         tree.PruneHeight,tree.PruneWidth,tree.BranchSectionNum,tree,rand)
                 # カーブとして成り立たない場合は入れない
                 if len(nb.Vertices) > 3 :
                     tree.Branches.append(nb)
-            elif i <= 1 and not self.Next :
-                tree.Branches.append(newBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,self.Strength,self.WeightExponent,\
+            elif (i <= 1 and not self.Next) or item.BranchSeed * 100 < self.Probability + self.FlowerBranchProbability and nd.y > 0 and prune > self.LowestHeight ** 2 :
+                tree.Branches.append(NewBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,self.Strength,self.WeightExponent,\
                         self.Probability,self.CircleSmoothness,tree.Flowersmoothness,tree.FlowerThickness,\
                         tree.FlowerSectionNum,tree,rand))
 
@@ -253,22 +272,22 @@ class OldBranch(RoseBranch) :
         self.Vertices.append(tip)
         self.Sections.append(OldBranchSection(tip,nd,dist,l,inc,s,e,self,ph,pw,self.SectionNum))
 
-class newBranch(RoseBranch) :
-    def __init__(self, p, d, dist, sl, inc, s, e, prob, cs, hs, thi, sn, tree, rand=True, name='newBranch'):
-        super().__init__(p, d, dist, sl, inc, s, e, prob, cs, hs, thi, tree, rand=rand, name=name)
+class NewBranch(RoseBranch) :
+    def __init__(self, p, d, dist, sl, inc, s, e, prob, cs, hs, thi, sn, tree, rand=True, name='NewBranch'):
+        super().__init__(p, d, dist, sl, inc, s, e, prob, 0, 0, cs, hs, thi, tree, rand=rand, name=name)
 
         self.SectionNum = sn
          # 節を追加していく
-        self.Sections.append(newBranchSection(p,d,0,sl,inc,s,e,self,sn))
+        self.Sections.append(NewBranchSection(p,d,0,sl,inc,s,e,self,sn))
         self.SetLeaves()
 
     def Append(self,tip,nd,dist,l,inc,s,e) :
         '''節を引数に引数の節を リストに 追加する'''
         self.Vertices.append(tip)
-        self.Sections.append(newBranchSection(tip,nd,dist,l,inc,s,e,self,self.SectionNum))
+        self.Sections.append(NewBranchSection(tip,nd,dist,l,inc,s,e,self,self.SectionNum))
 
 class BushRoseTree :
-    def __init__(self,name,cs,inc,s,e,prob,lh,sph,spw,ssl,st,ss,sn,bph,bpw,bsn,bsl,bt,bs,fnum,fneck,g,fsn,fsl,ft,fs,rand = True):
+    def __init__(self,name,cs,inc,s,e,prob,fprob,lh,sph,spw,ssl,st,ss,sn,bph,bpw,bsn,bsl,bt,bs,fnum,fneck,g,fsn,fsl,ft,fs,rand = True):
         # 共有部分
         # 軸の分割
         self.Name = name
@@ -318,7 +337,7 @@ class BushRoseTree :
             hori = random.random() * 2 * math.pi
             vert = random.random() * math.pi / 2
             vec = v3.Vector3.Normalized_hv(hori,vert)
-            self.Branches.append(ShootBranch(v3.Vector3(0,0,0),vec,0,ssl,inc,s,e,prob,cs,ss,st,sph,spw,self))
+            self.Branches.append(ShootBranch(v3.Vector3(0,0,0),vec,0,ssl,inc,s,e,prob,fprob,lh,cs,ss,st,sph,spw,self))
         
         # モデル用
         self.Curves = []
@@ -368,6 +387,69 @@ class BushRoseTree :
         pm.select(self.Cils)
         self.CilsGRP = pm.group(n = name + '_Cils_GRP')
         pm.parent(self.CilsGRP,self.group)
+    
+    def SetLeaves(self,leaf_obj_name) :
+        self.Leaves = []
+        find_obj = pm.ls(leaf_obj_name)
+        if len(find_obj) == 0 :
+            # 葉のオブジェクトが見つからない場合エラー
+            pm.error(u'object \'{name}\' not found'.format(name = leaf_obj_name))
+        else :
+            for item in self.Branches :
+                if type(item) == NewBranch :
+                    print(item.Name)
+                    for i in range(len(item.Sections)) :
+                        sec = item.Sections[i]
+
+                        # 節の Dir を y 、　pos.xz を x として
+                        # 株の外側を 0 とした正規直交基底を作る
+                        base_x = v3.Vector3.Normalized(sec.Pos)
+                        base_y = sec.Dir
+                        base_x = v3.Vector3.Normalized(base_y.Vertical_xz(base_x))
+                        base_z = base_x.Cross(base_y)
+                        # 葉の向きに合わせる
+                        theta = sec.LeafDir
+                        temp = base_x * math.cos(theta) + base_z * math.sin(theta)
+                        base_z = base_x * (-math.sin(theta)) + base_z * math.cos(theta)
+                        base_x = temp
+
+                        # 葉のオブジェクトを複製
+                        obj = pm.duplicate(leaf_obj_name)
+
+                        # 名前と超点数の取得
+                        pm.select(obj)
+                        obj_name = pm.ls(sl = True)
+                        l = (pm.polyEvaluate(v = True))
+                        
+                        # 頂点を移動していく
+                        for i in range(l) :
+                            vert_index = '.vtx[' + str(i) + ']'
+                            vert_name = obj_name[0].replace('Shape','') + vert_index
+                            pm.select(vert_name)
+                            # 頂点を取得
+                            vert_pos_list = pm.pointPosition()
+                            # Vector3 に変換
+                            vert_pos = v3.Vector3(vert_pos_list[0],vert_pos_list[1],vert_pos_list[2])
+                            # 新しい基底に変換
+                            new_pos = base_x * vert_pos.x + base_y * vert_pos.y + base_z * vert_pos.z
+
+                            # 頂点を移動
+                            pm.move(new_pos.x,new_pos.y,new_pos.z)
+                        
+                        # モデルを移動
+                        pm.select(obj)
+                        pm.move(sec.Pos.x,sec.Pos.y,sec.Pos.z)
+
+                        self.Leaves.append(obj)
+            # グループにまとめる
+            name = self.Name if not self.Name == '' else 'BushRose'
+            pm.select(self.Leaves)
+            self.LeavesGRP = pm.group(n = name + '_Leaves_GRP')
+            pm.parent(self.LeavesGRP,self.group)
+
+
+
+
 
 
 
