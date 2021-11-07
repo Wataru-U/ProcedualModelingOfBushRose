@@ -189,7 +189,7 @@ class RoseBranch :
                     leafDir += math.pi / 3
                     item.SetLeafDir(leafDir)
                     nd = item.NewBranchDir(math.pi / 6)
-            leafDir += math.pi / 5 * 4
+            leafDir += math.pi / 4 * 3
 
 
 class ShootBranch(RoseBranch) :
