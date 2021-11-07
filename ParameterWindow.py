@@ -121,6 +121,9 @@ class RoseParameter:
         with pm.horizontalLayout() :
             pm.text('LeafObjctName')
             self.LeafName = pm.textField('leafObjctName',text = 'leaf_GEO')
+        with pm.horizontalLayout() :
+            pm.text('FlowerObjctName')
+            self.FlowerName = pm.textField('flowerObjctName',text = 'flower_GEO')
 
         with pm.horizontalLayout() :
             pm.text('Random')
@@ -159,6 +162,7 @@ class RoseParameter:
         pm.button(label = 'Curve', command = self.CreateCurve)
         pm.button(label = 'Mesh', command = self.CreateMesh)
         pm.button(label = 'Leaf', command = self.SetLeaves)
+        pm.button(label = 'Flower', command = self.SetFlowers)
         
         # ランダム要素　の有無
         # ランダムをなくすと同じパラメータに対していつも同じモデルを返す　予定
@@ -198,6 +202,9 @@ class RoseParameter:
 
     def SetLeaves(self,*args) :
         self.brt.SetLeaves(pm.textField(self.LeafName, q=True, text=True))
+
+    def SetFlowers(self,*args) :
+        self.brt.setFlowers(pm.textField(self.FlowerName, q=True, text=True))
 
 
 roseParam = RoseParameter()

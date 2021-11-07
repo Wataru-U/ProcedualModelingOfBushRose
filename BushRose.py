@@ -38,7 +38,7 @@ class Section :
         self.IdealDir = v3.Vector3(ideal_x,abs(math.sin(inc)),ideal_z)
 
      
-    def tip(self) :
+    def Tip(self) :
         '''先端の位置を返す'''
         return self.Pos + self.Dir * self.Length
     
@@ -89,9 +89,9 @@ class ShootSection(Section) :
                 v3.Vector3.WeightedAverage(d,self.IdealDir,self.Strength,dist ** self.WeightExponent) \
                 if math.tan(inc) > self.DirInc_y_xz \
                 else d
-            branch.Append(self.tip(),nextDir,dist+1,l,ph,pw,inc,s,e)
+            branch.Append(self.Tip(),nextDir,dist+1,l,ph,pw,inc,s,e)
         else :
-            branch.Vertices.append(self.tip())
+            branch.Vertices.append(self.Tip())
 
 # 一般の枝の節クラス
 class OldBranchSection(Section) :
@@ -112,12 +112,12 @@ class OldBranchSection(Section) :
                 v3.Vector3.WeightedAverage(d,self.IdealDir,self.Strength,dist ** self.WeightExponent) \
                 if math.tan(inc) > self.DirInc_y_xz \
                 else d
-            branch.Append(self.tip(),nextDir,dist+1,l,ph,pw,inc,s,e)
+            branch.Append(self.Tip(),nextDir,dist+1,l,ph,pw,inc,s,e)
         else :
             # 剪定範囲を超えたら
             if dist_xz + dist_y > 1 :
                 branch.Next = False
-            branch.Vertices.append(self.tip())
+            branch.Vertices.append(self.Tip())
 
 # 花枝の節クラス
 class NewBranchSection(Section) :
@@ -131,9 +131,9 @@ class NewBranchSection(Section) :
                 v3.Vector3.WeightedAverage(d,self.IdealDir,self.Strength,dist ** self.WeightExponent) \
                 if math.tan(inc) > self.DirInc_y_xz \
                 else d
-            branch.Append(self.tip(),nextDir,dist+1,l,inc,s,e)
+            branch.Append(self.Tip(),nextDir,dist+1,l,inc,s,e)
         else :
-            branch.Vertices.append(self.tip())
+            branch.Vertices.append(self.Tip())
 
         
 class RoseBranch :
@@ -450,8 +450,65 @@ class BushRoseTree :
             self.LeavesGRP = pm.group(n = name + '_Leaves_GRP')
             pm.parent(self.LeavesGRP,self.group)
 
+    # 仮　後で花序に合わせて直す
+    def setFlowers(self,flower_obj_name) :
 
+        self.Flowers = []
+        find_obj = pm.ls(flower_obj_name)
+        if len(find_obj) == 0 :
+            # 花のオブジェクトが見つからない場合エラー
+            pm.error(u'object \'{name}\' not found'.format(name = flower_obj_name))
+        else :
+            for item in self.Branches :
+                if type(item) == NewBranch :
+                    print(item.Name)
+                    sec = item.Sections[0]
 
+                    # 節の Dir を y 、　pos.xz を x として
+                    # 株の外側を 0 とした正規直交基底を作る
+                    base_x = v3.Vector3.Normalized(sec.Pos)
+                    base_y = sec.Dir
+                    base_x = v3.Vector3.Normalized(base_y.Vertical_xz(base_x))
+                    base_z = base_x.Cross(base_y)
+                    # 花の向きに合わせる
+                    theta = sec.LeafDir
+                    temp = base_x * math.cos(theta) + base_z * math.sin(theta)
+                    base_z = base_x * (-math.sin(theta)) + base_z * math.cos(theta)
+                    base_x = temp
+
+                    # 花のオブジェクトを複製
+                    obj = pm.duplicate(flower_obj_name)
+
+                    # 名前と超点数の取得
+                    pm.select(obj)
+                    obj_name = pm.ls(sl = True)
+                    l = (pm.polyEvaluate(v = True))
+                        
+                    # 頂点を移動していく
+                    for i in range(l) :
+                        vert_index = '.vtx[' + str(i) + ']'
+                        vert_name = obj_name[0].replace('Shape','') + vert_index
+                        pm.select(vert_name)
+                        # 頂点を取得
+                        vert_pos_list = pm.pointPosition()
+                        # Vector3 に変換
+                        vert_pos = v3.Vector3(vert_pos_list[0],vert_pos_list[1],vert_pos_list[2])
+                        # 新しい基底に変換
+                        new_pos = base_x * vert_pos.x + base_y * vert_pos.y + base_z * vert_pos.z
+
+                        # 頂点を移動
+                        pm.move(new_pos.x,new_pos.y,new_pos.z)
+                        
+                    # モデルを移動
+                    pm.select(obj)
+                    pm.move(sec.Tip().x,sec.Tip().y,sec.Tip().z)
+
+                    self.Flowers.append(obj)
+            # グループにまとめる
+            name = self.Name if not self.Name == '' else 'BushRose'
+            pm.select(self.Flowers)
+            self.FlowersGRP = pm.group(n = name + '_Flowers_GRP')
+            pm.parent(self.FlowersGRP,self.group)
 
 
 
