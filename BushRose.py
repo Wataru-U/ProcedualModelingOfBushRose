@@ -171,9 +171,12 @@ class RoseBranch :
         for i in range(len(self.Sections)) :
             index = i
             item = self.Sections[index]
+            '''
+            # 2/5葉序
             # ランダムの振れ幅
             leafDirRange = math.pi / 3 * 2
             leafDir = leafDir + (item.LeafSeed - 0.5) * leafDirRange 
+            '''
             item.SetLeafDir(leafDir)
 
             # 次の枝の向き
@@ -186,7 +189,7 @@ class RoseBranch :
                     leafDir += math.pi / 3
                     item.SetLeafDir(leafDir)
                     nd = item.NewBranchDir(math.pi / 6)
-            leafDir += math.pi / 2
+            leafDir += math.pi / 5 * 4
 
 
 class ShootBranch(RoseBranch) :
