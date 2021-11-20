@@ -110,7 +110,7 @@ class FlowerBranchParameter(BranchParameter) :
 # 葉と花についてのパラメータはそのうち用意する。
 # ウィンドウ込み
 class RoseParameter:
-    def __init__(self,smoothness = 16,inclination = math.pi / 3, strength = 10,exponent = 1,lh = 0.1,prob = 5,FlowerBranchProbability = 20,b = OldBranchParameter(),sb = ShootParameter(),fb = FlowerBranchParameter()) :
+    def __init__(self,smoothness = 16,inclination = math.pi / 3, strength = 10,flowerStrength = 3,flowerExponent = 1.2,exponent = 1,lh = 0.1,prob = 5,FlowerBranchProbability = 20,b = OldBranchParameter(),sb = ShootParameter(),fb = FlowerBranchParameter()) :
         
         # window
         self.window = pm.window("RoseWindow", t = "BushRose", w = 546, h = 350)
@@ -135,7 +135,11 @@ class RoseParameter:
         # 枝の曲がる強さ
         self.Strength =  pm.intSliderGrp(label='Strength', field=True, min=1, max=32, value=strength)
         # 枝の重みの指数部
-        self.WeightExponent = pm.floatSliderGrp(label='WeightWxponent', field=True, min=-2, max = 2, step = 0.01, value=exponent)
+        self.WeightExponent = pm.floatSliderGrp(label='WeightWxponent', field=True, min=0, max = 2, step = 0.01, value=exponent)
+        # 花枝の曲がる強さ
+        self.FlowerStrength =  pm.intSliderGrp(label='FlowerStrength', field=True, min=1, max=32, value=flowerStrength)
+        # 花枝の重みの指数部
+        self.FlowerWeightExponent = pm.floatSliderGrp(label='FlowerWeightWxponent', field=True, min=0, max = 2, step = 0.01, value=flowerExponent)
         # 枝の生えやすさ (%)
         self.Probability = pm.intSliderGrp(label='Probability', field=True, min=0, max=100, value=prob)
         # 花枝の生えやすさ (%)
@@ -180,7 +184,7 @@ class RoseParameter:
                 self.ShootParam.pinchHeight.getValue(), self.ShootParam.pinchWidth.getValue(), self.ShootParam.sectionLength.getValue(), self.ShootParam.thickness.getValue(), self.ShootParam.smoothness.getValue(), self.ShootParam.shootNum.getValue(), \
                 self.BranchParam.pruneHeight.getValue(), self.BranchParam.pruneWidth.getValue(), self.BranchParam.sectionNum.getValue(), self.BranchParam.sectionLength.getValue(), self.BranchParam.thickness.getValue(), self.BranchParam.smoothness.getValue(), \
                 self.FlowerBParam.flowerNum.getValue(), self.FlowerBParam.flowerNeck.getValue(), self.FlowerBParam.gravity.getValue(), \
-                self.FlowerBParam.sectionNum.getValue(), self.FlowerBParam.sectionLength.getValue(), self.FlowerBParam.thickness.getValue(), self.FlowerBParam.smoothness.getValue(), \
+                self.FlowerBParam.sectionNum.getValue(), self.FlowerBParam.sectionLength.getValue(), self.FlowerBParam.thickness.getValue(), self.FlowerBParam.smoothness.getValue(), self.FlowerStrength.getValue(),self.FlowerWeightExponent.getValue(), \
                 rand = self.Random.getValue() \
             )
         self.brt.CreateCurve()

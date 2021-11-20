@@ -177,7 +177,6 @@ class RoseBranch :
             leafDirRange = math.pi / 3 * 2
             leafDir = leafDir + (item.LeafSeed - 0.5) * leafDirRange 
             '''
-            item.SetLeafDir(leafDir)
 
             # 次の枝の向き
             # 花がら摘みで出たら /6 春先なら /2
@@ -189,6 +188,8 @@ class RoseBranch :
                     leafDir += math.pi / 3
                     item.SetLeafDir(leafDir)
                     nd = item.NewBranchDir(math.pi / 6)
+            item.SetLeafDir(leafDir)
+            
             leafDir += math.pi / 4 * 3
 
 
@@ -216,14 +217,16 @@ class ShootBranch(RoseBranch) :
             prune = prune_xz + prune_y
 
             if (i <= 1 or item.BranchSeed * 100 < self.Probability) and nd.y  > 0 :
-                tree.Branches.append( \
-                    OldBranch \
+                    t = OldBranch \
                         (item.Pos,nd,1,tree.BranchSectionLength,self.Inclination,self.Strength,self.WeightExponent, \
                         self.Probability,self.FlowerBranchProbability,self.LowestHeight,self.CircleSmoothness,tree.BranchSmoothness,tree.BranchThickness, \
-                        tree.PruneHeight,tree.PruneWidth,tree.BranchSectionNum,tree,rand))
-            elif item.BranchSeed * 100 < self.Probability + self.FlowerBranchProbability and nd.y > 0 and prune > self.LowestHeight ** 2 :
-                tree.Branches.append(NewBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,self.Strength,self.WeightExponent,\
-                        self.Probability,self.CircleSmoothness,tree.Flowersmoothness,tree.FlowerThickness,\
+                        tree.PruneHeight,tree.PruneWidth,tree.BranchSectionNum,tree,rand)
+                    # カーブとして成り立たない場合は追加しない
+                    if(len(t.Sections) > 2) :
+                        tree.Branches.append(t)
+            elif i <= 1 or (item.BranchSeed * 100 < self.Probability + self.FlowerBranchProbability and nd.y > 0 and prune > self.LowestHeight ** 2) :
+                tree.Branches.append(NewBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,tree.FlowerStrength,tree.FlowerWeightExponent,\
+                        self.Probability,self.CircleSmoothness,tree.FlowerSmoothness,tree.FlowerThickness,\
                         tree.FlowerSectionNum,tree,rand))
 
     
@@ -244,31 +247,34 @@ class OldBranch(RoseBranch) :
         # 節を追加していく
         self.Sections.append(OldBranchSection(p,d,0,sl,inc,s,e,self,ph,pw,sn))
         self.SetLeaves()
-        for i in range(len(self.Sections)) :
-            index = i
-            item = self.Sections[index]
-            # 次の枝の向き
-            # 花がら摘みで出たら pi/3 春先なら 0
-            theta = math.pi / 3 if i <= 1 else 0
-            nd = item.NewBranchDir(theta)
+        if len(self.Sections) > 2 :
+            for i in range(len(self.Sections)) :
+                index = i
+                item = self.Sections[index]
+                # 次の枝の向き
+                # 花がら摘みで出たら pi/3 春先なら 0
+                theta = math.pi / 3 if i <= 1 and self.Next else 0
+                nd = item.NewBranchDir(theta)
 
-            # 剪定ラインからの割合
-            prune_xz = (item.Pos.x ** 2 + item.Pos.z ** 2) / (self.PruneWidth ** 2)
-            prune_y = (item.Pos.y ** 2) / (self.PruneHeight ** 2)
-            prune = prune_xz + prune_y
+                # 剪定ラインからの割合
+                prune_xz = (item.Pos.x ** 2 + item.Pos.z ** 2) / (self.PruneWidth ** 2)
+                prune_y = (item.Pos.y ** 2) / (self.PruneHeight ** 2)
+                prune = prune_xz + prune_y
 
-            if ((i <= 1 and self.Next) or item.BranchSeed * 100 < self.Probability) and nd.y  > 0 and dist < 4:
-                nb = OldBranch \
-                        (item.Pos,nd,dist+1,tree.BranchSectionLength,self.Inclination,self.Strength,self.WeightExponent, \
-                        self.Probability,self.FlowerBranchProbability,self.LowestHeight,self.CircleSmoothness,tree.BranchSmoothness,tree.BranchThickness, \
-                        tree.PruneHeight,tree.PruneWidth,tree.BranchSectionNum,tree,rand)
-                # カーブとして成り立たない場合は入れない
-                if len(nb.Vertices) > 3 :
-                    tree.Branches.append(nb)
-            elif (i <= 1 and not self.Next) or item.BranchSeed * 100 < self.Probability + self.FlowerBranchProbability and nd.y > 0 and prune > self.LowestHeight ** 2 :
-                tree.Branches.append(NewBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,self.Strength,self.WeightExponent,\
-                        self.Probability,self.CircleSmoothness,tree.Flowersmoothness,tree.FlowerThickness,\
-                        tree.FlowerSectionNum,tree,rand))
+                # 枝の根元の節からは出さない
+                if item.Dist > 0 :
+                    if ((i <= 1 and self.Next) or item.BranchSeed * 100 < self.Probability) and nd.y  > 0 and dist < 4:
+                        nb = OldBranch \
+                                (item.Pos,nd,dist+1,tree.BranchSectionLength,self.Inclination,self.Strength,self.WeightExponent, \
+                                self.Probability,self.FlowerBranchProbability,self.LowestHeight,self.CircleSmoothness,tree.BranchSmoothness,tree.BranchThickness, \
+                                tree.PruneHeight,tree.PruneWidth,tree.BranchSectionNum,tree,rand)
+                        # カーブとして成り立たない場合は入れない
+                        if len(nb.Sections) > 2 :
+                            tree.Branches.append(nb)
+                    elif (i <= 1 and not self.Next) or item.BranchSeed * 100 < self.Probability + self.FlowerBranchProbability and nd.y > 0 and prune > self.LowestHeight ** 2 :
+                        tree.Branches.append(NewBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,tree.FlowerStrength,tree.FlowerWeightExponent,\
+                                self.Probability,self.CircleSmoothness,tree.FlowerSmoothness,tree.FlowerThickness,\
+                                tree.FlowerSectionNum,tree,rand))
 
     def Append(self,tip,nd,dist,l,ph,pw,inc,s,e) :
         '''節を引数に引数の節を リストに 追加する'''
@@ -281,7 +287,7 @@ class NewBranch(RoseBranch) :
 
         self.SectionNum = sn
          # 節を追加していく
-        self.Sections.append(NewBranchSection(p,d,0,sl,inc,s,e,self,sn))
+        self.Sections.append(NewBranchSection(p,d,1,sl,inc,s,e,self,sn))
         self.SetLeaves()
 
     def Append(self,tip,nd,dist,l,inc,s,e) :
@@ -290,7 +296,7 @@ class NewBranch(RoseBranch) :
         self.Sections.append(NewBranchSection(tip,nd,dist,l,inc,s,e,self,self.SectionNum))
 
 class BushRoseTree :
-    def __init__(self,name,cs,inc,s,e,prob,fprob,lh,sph,spw,ssl,st,ss,sn,bph,bpw,bsn,bsl,bt,bs,fnum,fneck,g,fsn,fsl,ft,fs,rand = True):
+    def __init__(self,name,cs,inc,s,e,prob,fprob,lh,sph,spw,ssl,st,ss,sn,bph,bpw,bsn,bsl,bt,bs,fnum,fneck,g,fsn,fsl,ft,fs,fst,fw,rand = True):
         # 共有部分
         # 軸の分割
         self.Name = name
@@ -332,7 +338,9 @@ class BushRoseTree :
         self.FlowerSectionNum = fsn
         self.FlowerSectionLength = fsl
         self.FlowerThickness = ft
-        self.Flowersmoothness = fs
+        self.FlowerSmoothness = fs
+        self.FlowerStrength = fst
+        self.FlowerWeightExponent = fw
 
         # 枝の追加
         self.Branches = []
