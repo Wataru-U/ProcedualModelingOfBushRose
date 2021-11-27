@@ -2,7 +2,7 @@ import pymel.core as pm
 import math
 import random
 import Vector3 as v3
-
+from pymel.core.general import select
 
 
 # 基底節クラス
@@ -35,7 +35,15 @@ class Section :
         ideal_x = d.x * math.cos(inc) / mag_xz
         ideal_z = d.z * math.cos(inc) / mag_xz
         self.DirInc_y_xz = d.y / mag_xz
-        self.IdealDir = v3.Vector3(ideal_x,abs(math.sin(inc)),ideal_z)
+        self.IdealDir = v3.Vector3(ideal_x,math.sin(inc),ideal_z)
+
+        # 基底を変換しておく
+        # 節の Dir を y 、　pos.xz を x として
+        # 株の外側を 0 とした正規直交基底を作る
+        self.base_x = v3.Vector3.Normalized(self.Pos)
+        self.base_y = self.Dir
+        self.base_x = v3.Vector3.Normalized(self.base_y.Vertical_xz(self.base_x))
+        self.base_z = self.base_x.Cross(self.base_y)
 
      
     def Tip(self) :
@@ -47,12 +55,6 @@ class Section :
 
     def NewBranchDir(self,theta) :
         ''' 新しい枝の向きを決める　'''
-        # 節の Dir を y 、　pos.xz を x として
-        # 株の外側を 0 とした正規直交基底を作る
-        base_x = v3.Vector3.Normalized(self.Pos)
-        base_y = self.Dir
-        base_x = v3.Vector3.Normalized(base_y.Vertical_xz(base_x))
-        base_z = base_x.Cross(base_y)
         
         # 規定を変える前のベクトル
         d = v3.Vector3(0,0,0)
@@ -63,9 +65,9 @@ class Section :
 
         # 規定を変換した新しい枝の向き
         result = v3.Vector3(0,0,0)
-        result += base_x * d.x
-        result += base_y * d.y
-        result += base_z * d.z
+        result += self.base_x * d.x
+        result += self.base_y * d.y
+        result += self.base_z * d.z
 
         return result
 
@@ -120,7 +122,7 @@ class OldBranchSection(Section) :
             branch.Vertices.append(self.Tip())
 
 # 花枝の節クラス
-class NewBranchSection(Section) :
+class FlowerBranchSection(Section) :
     def __init__(self, p, d, dist, l, inc, s, e, branch, sn, lSeed=-1, bSeed=-1):
         super().__init__(p, d, dist, l, inc, s, e, branch, lSeed=lSeed, bSeed=bSeed)
 
@@ -133,6 +135,18 @@ class NewBranchSection(Section) :
                 else d
             branch.Append(self.Tip(),nextDir,dist+1,l,inc,s,e)
         else :
+            branch.Vertices.append(self.Tip())
+
+#花首節クラス
+class FlowerNeckSection(Section) :
+    def __init__(self, p, d, dist, l , inc, branch,gravity):
+        super().__init__(p, d, dist, l, min(inc,gravity), 0, 0, branch, lSeed=0, bSeed=0)
+        self.Gravity = gravity
+
+        if dist < 3 : 
+            nextDir = v3.Vector3.WeightedAverage(d,self.IdealDir,1,1)
+            branch.Append(self.Tip(),nextDir,dist+1,l,inc)
+        else : 
             branch.Vertices.append(self.Tip())
 
         
@@ -225,9 +239,9 @@ class ShootBranch(RoseBranch) :
                     if(len(t.Sections) > 2) :
                         tree.Branches.append(t)
             elif i <= 1 or (item.BranchSeed * 100 < self.Probability + self.FlowerBranchProbability and nd.y > 0 and prune > self.LowestHeight ** 2) :
-                tree.Branches.append(NewBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,tree.FlowerStrength,tree.FlowerWeightExponent,\
+                tree.Branches.append(FlowerBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,tree.FlowerStrength,tree.FlowerWeightExponent,\
                         self.Probability,self.CircleSmoothness,tree.FlowerSmoothness,tree.FlowerThickness,\
-                        tree.FlowerSectionNum,tree,rand))
+                        tree.FlowerSectionNum,tree.FlowerNum,1,tree,rand))
 
     
     def Append(self,tip,nd,dist,l,ph,pw,inc,s,e) :
@@ -272,28 +286,69 @@ class OldBranch(RoseBranch) :
                         if len(nb.Sections) > 2 :
                             tree.Branches.append(nb)
                     elif (i <= 1 and not self.Next) or item.BranchSeed * 100 < self.Probability + self.FlowerBranchProbability and nd.y > 0 and prune > self.LowestHeight ** 2 :
-                        tree.Branches.append(NewBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,tree.FlowerStrength,tree.FlowerWeightExponent,\
+                        tree.Branches.append(FlowerBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,tree.FlowerStrength,tree.FlowerWeightExponent,\
                                 self.Probability,self.CircleSmoothness,tree.FlowerSmoothness,tree.FlowerThickness,\
-                                tree.FlowerSectionNum,tree,rand))
+                                tree.FlowerSectionNum,tree.FlowerNum,1,tree,rand))
 
     def Append(self,tip,nd,dist,l,ph,pw,inc,s,e) :
         '''節を引数に引数の節を リストに 追加する'''
         self.Vertices.append(tip)
         self.Sections.append(OldBranchSection(tip,nd,dist,l,inc,s,e,self,ph,pw,self.SectionNum))
 
-class NewBranch(RoseBranch) :
-    def __init__(self, p, d, dist, sl, inc, s, e, prob, cs, hs, thi, sn, tree, rand=True, name='NewBranch'):
+class FlowerBranch(RoseBranch) :
+    def __init__(self, p, d, dist, sl, inc, s, e, prob, cs, hs, thi, sn, fn, ndist, tree, rand=True, name='FlowerBranch'):
         super().__init__(p, d, dist, sl, inc, s, e, prob, 0, 0, cs, hs, thi, tree, rand=rand, name=name)
 
+        self.FlowerNum = fn
         self.SectionNum = sn
          # 節を追加していく
-        self.Sections.append(NewBranchSection(p,d,1,sl,inc,s,e,self,sn))
+        self.Sections.append(FlowerBranchSection(p,d,ndist,sl,inc,s,e,self,sn))
         self.SetLeaves()
+
+        #花首を追加
+        tip = self.Sections[0]
+        for i in range(min(3,self.FlowerNum)) :
+            dir = v3.Vector3(0,1,0)
+            dir = dir.rotate_x(flowerNeckDir[i])
+            print(dir.Vector(),end = ', ')
+            dir = tip.base_x * dir.x + tip.base_y * dir.y + tip.base_z * dir.z
+            print(dir.Vector())
+            tree.Branches.append(FlowerNeck(tip.Tip(),dir,1,sl/2,inc,cs,hs,thi,tree))
+        self.FlowerNum = max(0,self.FlowerNum - 3)
+
+        index = 1
+        while self.FlowerNum > 0 and index < self.SectionLength :
+            sec = self.Sections[index]
+            theta = math.pi / 3
+            nd = sec.NewBranchDir(theta)
+            nextFlowerNum = min(3,self.FlowerNum)
+            nextDist = sec.Dist
+
+            tree.Branches.append(\
+                FlowerBranch(sec.Pos,nd,dist+1,sl,inc,s,e,\
+                0,cs,hs,thi,sn,nextFlowerNum,nextDist,tree,rand))
+
+            index += 1
+            self.FlowerNum = max(0,self.FlowerNum - 3)
 
     def Append(self,tip,nd,dist,l,inc,s,e) :
         '''節を引数に引数の節を リストに 追加する'''
         self.Vertices.append(tip)
-        self.Sections.append(NewBranchSection(tip,nd,dist,l,inc,s,e,self,self.SectionNum))
+        self.Sections.append(FlowerBranchSection(tip,nd,dist,l,inc,s,e,self,self.SectionNum))
+
+class FlowerNeck(RoseBranch) :
+    def __init__(self, p, d, dist, sl, inc, cs, hs, thi, tree, rand=True, name='FlowerNeck'):
+        super().__init__(p, d, dist, sl, inc, 0, 0, 0, 0, 0, cs, hs, thi, tree, rand=rand, name=name)
+        self.Gravity = tree.Gravity
+
+        #節を追加
+        self.Sections.append(FlowerNeckSection(p,d,1,sl,inc,self,self.Gravity))
+
+
+    def Append(self,tip,nd,dist,l,inc) :
+        self.Vertices.append(tip)
+        self.Sections.append(FlowerNeckSection(tip,nd,dist,l,inc,self,self.Gravity))
+
 
 class BushRoseTree :
     def __init__(self,name,cs,inc,s,e,prob,fprob,lh,sph,spw,ssl,st,ss,sn,bph,bpw,bsn,bsl,bt,bs,fnum,fneck,g,fsn,fsl,ft,fs,fst,fw,rand = True):
@@ -364,6 +419,7 @@ class BushRoseTree :
         i = 0
         for item in self.Branches :
                 name = item.Name + '_' + str(i) + '_'
+                print(item.Name,len(item.Vertices))
                 self.Curves.append(pm.curve(name = name + 'CUR',p = [j.Vector() for j in item.Vertices]))
                 i += 1
 
@@ -407,22 +463,16 @@ class BushRoseTree :
             pm.error(u'object \'{name}\' not found'.format(name = leaf_obj_name))
         else :
             for item in self.Branches :
-                if type(item) == NewBranch :
+                if type(item) == FlowerBranch :
                     print(item.Name)
                     for i in range(len(item.Sections)) :
                         sec = item.Sections[i]
 
-                        # 節の Dir を y 、　pos.xz を x として
-                        # 株の外側を 0 とした正規直交基底を作る
-                        base_x = v3.Vector3.Normalized(sec.Pos)
-                        base_y = sec.Dir
-                        base_x = v3.Vector3.Normalized(base_y.Vertical_xz(base_x))
-                        base_z = base_x.Cross(base_y)
                         # 葉の向きに合わせる
                         theta = sec.LeafDir
-                        temp = base_x * math.cos(theta) + base_z * math.sin(theta)
-                        base_z = base_x * (-math.sin(theta)) + base_z * math.cos(theta)
-                        base_x = temp
+                        base_x = sec.base_x * math.cos(theta) + sec.base_z * math.sin(theta)
+                        base_y = sec.base_y
+                        base_z = sec.base_x * (-math.sin(theta)) + sec.base_z * math.cos(theta)
 
                         # 葉のオブジェクトを複製
                         obj = pm.duplicate(leaf_obj_name)
@@ -460,7 +510,6 @@ class BushRoseTree :
 
     # 仮　後で花序に合わせて直す
     def setFlowers(self,flower_obj_name) :
-
         self.Flowers = []
         find_obj = pm.ls(flower_obj_name)
         if len(find_obj) == 0 :
@@ -468,21 +517,15 @@ class BushRoseTree :
             pm.error(u'object \'{name}\' not found'.format(name = flower_obj_name))
         else :
             for item in self.Branches :
-                if type(item) == NewBranch :
+                if type(item) == FlowerNeck :
                     print(item.Name)
                     sec = item.Sections[0]
 
-                    # 節の Dir を y 、　pos.xz を x として
-                    # 株の外側を 0 とした正規直交基底を作る
-                    base_x = v3.Vector3.Normalized(sec.Pos)
-                    base_y = sec.Dir
-                    base_x = v3.Vector3.Normalized(base_y.Vertical_xz(base_x))
-                    base_z = base_x.Cross(base_y)
                     # 花の向きに合わせる
                     theta = sec.LeafDir
-                    temp = base_x * math.cos(theta) + base_z * math.sin(theta)
-                    base_z = base_x * (-math.sin(theta)) + base_z * math.cos(theta)
-                    base_x = temp
+                    base_x = sec.base_x * math.cos(theta) + sec.base_z * math.sin(theta)
+                    base_y = sec.base_y
+                    base_z = sec.base_x * (-math.sin(theta)) + sec.base_z * math.cos(theta)
 
                     # 花のオブジェクトを複製
                     obj = pm.duplicate(flower_obj_name)
@@ -536,3 +579,5 @@ def cilSoftEdge(obj) :
     pm.select(objName[0].replace('Shape','') + faceNum)
     pm.polySoftEdge(a = 0,ch = 1)
 
+
+flowerNeckDir = [0,math.pi/4,-math.pi/4]

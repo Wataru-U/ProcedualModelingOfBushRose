@@ -99,7 +99,7 @@ class FlowerBranchParameter(BranchParameter) :
             self.flowerNeck = pm.floatSlider(min = 0,max = 1, step = 0.01, value = self.flowerNeck)
         with pm.horizontalLayout() :
             pm.text('Gravity')
-            self.gravity = pm.floatSlider(min = 0,max = 1, step = 0.01, value = self.gravity)
+            self.gravity = pm.floatSlider(min = -math.pi/2,max = math.pi/2, step = 0.01, value = self.gravity)
         with pm.horizontalLayout() :
             pm.text('SectionNum')
             self.sectionNum = pm.intField(value = self.sectionNum)
@@ -135,17 +135,17 @@ class RoseParameter:
         # 枝の曲がる強さ
         self.Strength =  pm.intSliderGrp(label='Strength', field=True, min=1, max=32, value=strength)
         # 枝の重みの指数部
-        self.WeightExponent = pm.floatSliderGrp(label='WeightWxponent', field=True, min=0, max = 2, step = 0.01, value=exponent)
+        self.WeightExponent = pm.floatSliderGrp(label='WeightExponent', field=True, min=0, max = 2, step = 0.01, value=exponent)
         # 花枝の曲がる強さ
         self.FlowerStrength =  pm.intSliderGrp(label='FlowerStrength', field=True, min=1, max=32, value=flowerStrength)
         # 花枝の重みの指数部
-        self.FlowerWeightExponent = pm.floatSliderGrp(label='FlowerWeightWxponent', field=True, min=0, max = 2, step = 0.01, value=flowerExponent)
+        self.FlowerWeightExponent = pm.floatSliderGrp(label='FlowerWeightExponent', field=True, min=0, max = 2, step = 0.01, value=flowerExponent)
         # 枝の生えやすさ (%)
         self.Probability = pm.intSliderGrp(label='Probability', field=True, min=0, max=100, value=prob)
         # 花枝の生えやすさ (%)
         self.FlowerBranchProbability = pm.intSliderGrp(label='FlowerBranchProbability', field=True, min=0, max=100, value=FlowerBranchProbability)
         # 新梢が生えてくる　一番低い所のたかさ　0~1
-        self.LowestHeight = pm.floatSliderGrp(label='lowestHeight', field=True, min=0, max=1, step = 0.01, value=lh)
+        self.LowestHeight = pm.floatSliderGrp(label='LowestHeight', field=True, min=0, max=1, step = 0.01, value=lh)
         # 枝のパラメータ
         self.BranchParam = b
         self.ShootParam = sb
