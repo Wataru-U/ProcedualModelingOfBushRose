@@ -60,6 +60,11 @@ class Vector3(object) :
     def Normalized_hv(hori,vert) :
         return Vector3(math.cos(hori) * math.cos(vert),math.sin(vert),math.sin(hori) * math.cos(vert))
 
+    def rotate_x(self,theta) :
+        y = self.y * math.cos(theta) - self.z * math.sin(theta)
+        z = self.y * math.sin(theta) + self.z * math.cos(theta)
+        return Vector3(self.x,y,z)
+
     def __add__(self, other) :
         """+ 演算子を定義するメソッド
             要素同士を足し合わせた新しい Vector3 インスタンスを返す """
