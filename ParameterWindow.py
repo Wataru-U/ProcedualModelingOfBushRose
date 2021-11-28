@@ -79,7 +79,7 @@ class OldBranchParameter(BranchParameter) :
 
 # 花が咲く枝 (その年に生えた枝)
 class FlowerBranchParameter(BranchParameter) :
-    def __init__(self,thickness = 0.3,sl = 5,sn = 7,smooth = 1,fnum = 1,fneck = 0,g = 0) :
+    def __init__(self,thickness = 0.3,sl = 5,sn = 7,smooth = 1,fnum = 1,fneck = 0,g = math.pi/4) :
         super().__init__(thickness,sl,sn,smooth)
         #　花数
         self.flowerNum = fnum
@@ -146,6 +146,8 @@ class RoseParameter:
         self.FlowerBranchProbability = pm.intSliderGrp(label='FlowerBranchProbability', field=True, min=0, max=100, value=FlowerBranchProbability)
         # 新梢が生えてくる　一番低い所のたかさ　0~1
         self.LowestHeight = pm.floatSliderGrp(label='LowestHeight', field=True, min=0, max=1, step = 0.01, value=lh)
+        # 近接の距離
+        self.KillDiff = pm.floatSliderGrp(label='KillDiff', field=True, min=0, max=20, step = 0.01, value=2)
         # 枝のパラメータ
         self.BranchParam = b
         self.ShootParam = sb
@@ -180,7 +182,7 @@ class RoseParameter:
         self.brt = br.BushRoseTree \
             ( \
                 pm.textField(self.Name, q=True, text=True), \
-                self.Smoothness.getValue(), self.Inclination.getValue(), self.Strength.getValue(), self.WeightExponent.getValue(), self.Probability.getValue(), self.FlowerBranchProbability.getValue(), self.LowestHeight.getValue(), \
+                self.Smoothness.getValue(), self.Inclination.getValue(), self.Strength.getValue(), self.WeightExponent.getValue(), self.Probability.getValue(), self.FlowerBranchProbability.getValue(), self.LowestHeight.getValue(), self.KillDiff.getValue(),\
                 self.ShootParam.pinchHeight.getValue(), self.ShootParam.pinchWidth.getValue(), self.ShootParam.sectionLength.getValue(), self.ShootParam.thickness.getValue(), self.ShootParam.smoothness.getValue(), self.ShootParam.shootNum.getValue(), \
                 self.BranchParam.pruneHeight.getValue(), self.BranchParam.pruneWidth.getValue(), self.BranchParam.sectionNum.getValue(), self.BranchParam.sectionLength.getValue(), self.BranchParam.thickness.getValue(), self.BranchParam.smoothness.getValue(), \
                 self.FlowerBParam.flowerNum.getValue(), self.FlowerBParam.flowerNeck.getValue(), self.FlowerBParam.gravity.getValue(), \

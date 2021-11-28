@@ -65,6 +65,10 @@ class Vector3(object) :
         z = self.y * math.sin(theta) + self.z * math.cos(theta)
         return Vector3(self.x,y,z)
 
+    def dist(a,b) :
+        
+        return math.sqrt(abs(a-b))
+
     def __add__(self, other) :
         """+ 演算子を定義するメソッド
             要素同士を足し合わせた新しい Vector3 インスタンスを返す """
