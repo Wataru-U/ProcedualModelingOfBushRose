@@ -6,6 +6,8 @@ import math
 import Vector3 as v3
 import BushRose as br
 
+# ウィンドウ用
+
 #　枝のパラメータをまとめた基底クラス
 #　枝の長さの目安 sl * sn
 class BranchParameter :

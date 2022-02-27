@@ -81,12 +81,12 @@ class Vector3(object) :
 
     def __mul__(self, scalar) :
         """* 演算子を定義するメソッド
-           要素に scalar をかけた新しい Vector3 インスタンスを返す """
+            要素に scalar をかけた新しい Vector3 インスタンスを返す """
         return Vector3(self.x * scalar,self.y * scalar,self.z * scalar)
 
     def __truediv__(self, scalar) :
         """/ 演算子を定義するメソッド
-           要素に scalar を割った新しい Vector3 インスタンスを返す """
+            要素に scalar を割った新しい Vector3 インスタンスを返す """
         return Vector3(self.x / scalar,self.y / scalar,self.z / scalar)
 
     def __abs__(self) :
