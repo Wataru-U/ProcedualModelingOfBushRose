@@ -100,18 +100,28 @@ class Section :
 
 # シュートの節クラス
 class ShootSection(Section) :
-    def __init__(self, p, d, dist, l, ph, pw, inc, s, e, branch):
+    def __init__(self, p, d, dist, l, ph, pw, pruneH, pruneW, inc, s, e, branch):
         super().__init__(p, d, dist, l, inc, s, e, branch)
         # ピンチする高さ
         self.PinchHeight = ph
         # ピンチする幅
         self.pinchWidth = pw
+        # 剪定　高さ幅
+        self.pruneHeight = pruneH
+        self.pruneWidth = pruneW
         
         # 次の節を出すかどうか
-        dist_xz = (p.x ** 2 + p.z ** 2) / pw ** 2
-        dist_y = p.y ** 2 / ph ** 2
-        # ピンチ範囲内だったら
-        if dist_xz + dist_y <= 1 :
+        dist_xz_prune = (p.x ** 2 + p.z ** 2) / pruneW ** 2
+        dist_y_prune = p.y ** 2 / pruneH ** 2
+
+        dist_xz_pinch = (p.x ** 2 + p.z ** 2) / pw ** 2
+        dist_y_pinch = p.y ** 2 / ph ** 2
+        # 剪定で　切る　場合
+        if dist_xz_prune + dist_y_prune > 1 :
+            branch.Prune = True
+            branch.Vertices.append(self.Tip())
+        # 剪定範囲内　かつ ピンチ範囲内だったら
+        elif dist_xz_pinch + dist_y_pinch <= 1 :
             # 理想の傾きより大きくない場合
             # 根元からの節の数に合わせた 加重平均を取る
             nextDir = \
@@ -252,13 +262,17 @@ class RoseBranch :
 
 
 class ShootBranch(RoseBranch) :
-    def __init__(self, p, d, dist, sl, inc, s, e, prob, fprob, lh, cs, hs, thi, ph, pw, prev, tree, rand=True):
+    def __init__(self, p, d, dist, sl, inc, s, e, prob, fprob, lh, cs, hs, thi, ph, pw, pruneH, pruneW, prev, tree, rand=True):
         super().__init__(p, d, dist, sl, inc, s, e, prob, fprob, lh, cs, hs, thi, prev, tree, rand=rand, name = 'Shoot')
         self.PinchHeight = ph
         self.PinchWidth = pw
 
+        self.PruneHeight = pruneH
+        self.PruneWidth = pruneW
+        self.Prune = False
+
         # 節を追加していく
-        self.Sections.append(ShootSection(p,d,1,sl,ph,pw,inc,s,e,self))
+        self.Sections.append(ShootSection(p,d,1,sl,ph,pw,pruneH,pruneW,inc,s,e,self))
         # 葉と次の枝をセット
         self.SetLeaves()
         tree.Branches.append(self)
@@ -268,7 +282,7 @@ class ShootBranch(RoseBranch) :
             item = self.Sections[index]
             # 次の枝の向き
             # 花がら摘みで出たら pi/3 春先なら 0
-            theta = math.pi / 3 if i <= 1 else 0
+            theta = math.pi / 3 if i <= 1 and not self.Prune else 0
             nd = item.NewBranchDir(theta)
 
             # 剪定ラインからの割合
@@ -278,7 +292,11 @@ class ShootBranch(RoseBranch) :
             prune = prune_xz + prune_y
 
             # 卒論 2.6章 rand 周り
-            if (i <= 1 or item.BranchSeed * 100 < self.Probability) and nd.y  > 0 :
+            if i <= 1 and self.Prune :
+                FlowerBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,tree.FlowerStrength,tree.FlowerWeightExponent,\
+                    self.Probability,self.CircleSmoothness,tree.FlowerSmoothness,tree.FlowerThickness,\
+                    tree.FlowerSectionNum,tree.FlowerNum,1,self.Index,tree,rand)
+            elif (i <= 1 or item.BranchSeed * 100 < self.Probability) and nd.y  > 0 :
                 OldBranch \
                     (item.Pos,nd,1,tree.BranchSectionLength,self.Inclination,self.Strength,self.WeightExponent, \
                     self.Probability,self.FlowerBranchProbability,self.LowestHeight,self.CircleSmoothness,tree.BranchSmoothness,tree.BranchThickness, \
@@ -292,7 +310,7 @@ class ShootBranch(RoseBranch) :
     def Append(self,tip,nd,dist,l,ph,pw,inc,s,e) :
         '''節を引数に引数の節を リストに 追加する'''
         self.Vertices.append(tip)
-        self.Sections.append(ShootSection(tip,nd,dist,l,ph,pw,inc,s,e,self))
+        self.Sections.append(ShootSection(tip,nd,dist,l,ph,pw,self.PruneHeight,self.PruneWidth,inc,s,e,self))
 
 class OldBranch(RoseBranch) :
     def __init__(self, p, d, dist, sl, inc, s, e, prob,fprob,lh, cs, hs, thi, ph, pw, sn, prev, tree, rand=True, name='Branch'):
@@ -457,7 +475,7 @@ class BushRoseTree :
             hori = random.random() * 2 * math.pi
             vert = random.random() * math.pi / 2
             vec = v3.Vector3.Normalized_hv(hori,vert)
-            ShootBranch(v3.Vector3(0,0,0),vec,0,ssl,inc,s,e,prob,fprob,lh,cs,ss,st,sph,spw,-1,self)
+            ShootBranch(v3.Vector3(0,0,0),vec,0,ssl,inc,s,e,prob,fprob,lh,cs,ss,st,sph,spw,bph,bpw,-1,self)
         
         # モデル用
         self.Curves = []
