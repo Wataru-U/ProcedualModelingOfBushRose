@@ -1,6 +1,5 @@
 # window の　 slider の値は getValue()
 
-from random import random
 import pymel.core as pm
 import math
 import Vector3 as v3
@@ -81,13 +80,10 @@ class OldBranchParameter(BranchParameter) :
 
 # 花が咲く枝 (その年に生えた枝)
 class FlowerBranchParameter(BranchParameter) :
-    def __init__(self,thickness = 0.3,sl = 5,sn = 7,smooth = 1,fnum = 1,fneck = 0,g = math.pi/4) :
+    def __init__(self,thickness = 0.3,sl = 5,sn = 7,smooth = 1,fnum = 1,g = math.pi/2) :
         super().__init__(thickness,sl,sn,smooth)
         #　花数
         self.flowerNum = fnum
-        #　花首下がるかどうか 0~1
-        #　下がらない時 0
-        self.flowerNeck = fneck
         #　枝全体が垂れ下がる大きさ　 0~1
         #　下がらない時　 0
         self.gravity = g
@@ -96,9 +92,6 @@ class FlowerBranchParameter(BranchParameter) :
         with pm.horizontalLayout() :
             pm.text('FlowerNum')
             self.flowerNum = pm.intField(min = 1,max = 10,value = self.flowerNum)
-        with pm.horizontalLayout() :
-            pm.text('FlowerNeck')
-            self.flowerNeck = pm.floatSlider(min = 0,max = 1, step = 0.01, value = self.flowerNeck)
         with pm.horizontalLayout() :
             pm.text('Gravity')
             self.gravity = pm.floatSlider(min = -math.pi/2,max = math.pi/2, step = 0.01, value = self.gravity)
@@ -115,7 +108,7 @@ class RoseParameter:
     def __init__(self,smoothness = 16,inclination = math.pi / 3, strength = 10,flowerStrength = 3,flowerExponent = 1.2,exponent = 1,lh = 0.1,prob = 5,FlowerBranchProbability = 20,b = OldBranchParameter(),sb = ShootParameter(),fb = FlowerBranchParameter()) :
         
         # window
-        self.window = pm.window("RoseWindow", t = "BushRose", w = 546, h = 350)
+        self.window = pm.window("RoseWindow", t = "BushRose", w = 546, h = 100)
         pm.columnLayout(adj = True)
         with pm.horizontalLayout() :
             pm.text('Name')
@@ -127,9 +120,6 @@ class RoseParameter:
             pm.text('FlowerObjctName')
             self.FlowerName = pm.textField('flowerObjctName',text = 'flower_GEO')
 
-        with pm.horizontalLayout() :
-            pm.text('Random')
-            self.Random = pm.checkBox('randomCheckbox', label = '')
         # 枝の円の分割
         self.Smoothness = pm.intSliderGrp(label='Smoothness', field=True, min=3, max=64, value=smoothness)
         # 枝の傾き
@@ -187,9 +177,8 @@ class RoseParameter:
                 self.Smoothness.getValue(), self.Inclination.getValue(), self.Strength.getValue(), self.WeightExponent.getValue(), self.Probability.getValue(), self.FlowerBranchProbability.getValue(), self.LowestHeight.getValue(), self.KillDiff.getValue(),\
                 self.ShootParam.pinchHeight.getValue(), self.ShootParam.pinchWidth.getValue(), self.ShootParam.sectionLength.getValue(), self.ShootParam.thickness.getValue(), self.ShootParam.smoothness.getValue(), self.ShootParam.shootNum.getValue(), \
                 self.BranchParam.pruneHeight.getValue(), self.BranchParam.pruneWidth.getValue(), self.BranchParam.sectionNum.getValue(), self.BranchParam.sectionLength.getValue(), self.BranchParam.thickness.getValue(), self.BranchParam.smoothness.getValue(), \
-                self.FlowerBParam.flowerNum.getValue(), self.FlowerBParam.flowerNeck.getValue(), self.FlowerBParam.gravity.getValue(), \
+                self.FlowerBParam.flowerNum.getValue(), self.FlowerBParam.gravity.getValue(), \
                 self.FlowerBParam.sectionNum.getValue(), self.FlowerBParam.sectionLength.getValue(), self.FlowerBParam.thickness.getValue(), self.FlowerBParam.smoothness.getValue(), self.FlowerStrength.getValue(),self.FlowerWeightExponent.getValue(), \
-                rand = self.Random.getValue() \
             )
         self.brt.CreateCurve()
     
@@ -202,9 +191,8 @@ class RoseParameter:
                     self.Smoothness.getValue(), self.Inclination.getValue(), self.Strength.getValue(), self.WeightExponent.getValue(), self.Probability.getValue(), self.LowestHeight.getValue(), \
                     self.ShootParam.pinchHeight.getValue(), self.ShootParam.pinchWidth.getValue(), self.ShootParam.sectionLength.getValue(), self.ShootParam.thickness.getValue(), self.ShootParam.smoothness.getValue(), self.ShootParam.shootNum.getValue(), \
                     self.BranchParam.pruneHeight.getValue(), self.BranchParam.pruneWidth.getValue(), self.BranchParam.sectionNum.getValue(), self.BranchParam.sectionLength.getValue(), self.BranchParam.thickness.getValue(), self.BranchParam.smoothness.getValue(), \
-                    self.FlowerBParam.flowerNum.getValue(), self.FlowerBParam.flowerNeck.getValue(), self.FlowerBParam.gravity.getValue(), \
+                    self.FlowerBParam.flowerNum.getValue(), self.FlowerBParam.gravity.getValue(), \
                     self.FlowerBParam.sectionNum.getValue(), self.FlowerBParam.sectionLength.getValue(), self.FlowerBParam.thickness.getValue(), self.FlowerBParam.smoothness.getValue(), \
-                    rand = self.Random.getValue() \
                 )
         self.brt.SetMesh()
 

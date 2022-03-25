@@ -402,7 +402,7 @@ class FlowerNeck(RoseBranch) :
 
 # 株
 class BushRoseTree :
-    def __init__(self,name,cs,inc,s,e,prob,fprob,lh,kd,sph,spw,ssl,st,ss,sn,bph,bpw,bsn,bsl,bt,bs,fnum,fneck,g,fsn,fsl,ft,fs,fst,fw,rand = True):
+    def __init__(self,name,cs,inc,s,e,prob,fprob,lh,kd,sph,spw,ssl,st,ss,sn,bph,bpw,bsn,bsl,bt,bs,fnum,g,fsn,fsl,ft,fs,fst,fw,rand = True):
         global killDiff
         # 共有部分
         # 軸の分割
@@ -442,7 +442,6 @@ class BushRoseTree :
 
         # 花枝
         self.FlowerNum = fnum
-        self.FloerNeck = fneck
         self.Gravity = g
         self.FlowerSectionNum = fsn
         self.FlowerSectionLength = fsl
