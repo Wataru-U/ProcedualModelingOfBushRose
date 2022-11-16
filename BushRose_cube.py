@@ -1,4 +1,3 @@
-from unittest import result
 import pymel.core as pm
 import math
 import random
@@ -111,18 +110,12 @@ class ShootSection(Section) :
         self.pruneHeight = pruneH
         self.pruneWidth = pruneW
         
-        # 次の節を出すかどうか
-        dist_xz_prune = (p.x ** 2 + p.z ** 2) / pruneW ** 2
-        dist_y_prune = p.y ** 2 / pruneH ** 2
-
-        dist_xz_pinch = (p.x ** 2 + p.z ** 2) / pw ** 2
-        dist_y_pinch = p.y ** 2 / ph ** 2
         # 剪定で　切る　場合
-        if dist_xz_prune + dist_y_prune > 1 :
+        if p.x > pruneW / 2 or p.y > pruneH or p.z > pruneW / 2:
             branch.Prune = True
             branch.Vertices.append(self.Tip())
         # 剪定範囲内　かつ ピンチ範囲内だったら
-        elif dist_xz_pinch + dist_y_pinch <= 1 :
+        elif p.x < pw / 2 and p.y < ph and p.z < pw / 2 :
             # 理想の傾きより大きくない場合
             # 根元からの節の数に合わせた 加重平均を取る
             nextDir = \
@@ -151,7 +144,7 @@ class OldBranchSection(Section) :
 
         # 剪定範囲内 かつ 花がらつみ範囲内　か
         # 節が短すぎると カーブ が成り立たないので, 短すぎる場合, 剪定範囲超えても少し出す
-        if dist <= sn and dist_xz + dist_y <= 1 and Prox :
+        if dist <= sn and Prox and p.x < pw / 2 and p.y < ph and p.z < pw / 2 :
             nextDir = \
                 v3.Vector3.WeightedAverage(d,self.IdealDir,self.Strength,dist ** self.WeightExponent) \
                 if math.tan(inc) > self.DirInc_y_xz \
@@ -420,7 +413,7 @@ class FlowerNeck(RoseBranch) :
         self.Sections.append(FlowerNeckSection(tip,nd,dist,l,inc,self,self.Gravity))
 
 # 株
-class BushRoseTree :
+class BushRoseTree_Cube :
     def __init__(self,name,cs,inc,s,e,prob,fprob,lh,kd,sph,spw,ssl,st,ss,sn,bph,bpw,bsn,bsl,bt,bs,fnum,g,fsn,fsl,ft,fs,fst,fw,rand = True):
         global killDiff
         # 共有部分
@@ -481,23 +474,7 @@ class BushRoseTree :
         # モデル用
         self.Curves = []
         self.Cils = []
-
-    def Top(self) :
-        result = 0
-        for item in self.Branches :
-            if type(item) == FlowerBranch :
-                if result < item.Vertices[-1].y :
-                    result = item.Vertices[-1].y
-        return result
-
-    def isLarge(self, h, w) :
-        for item in self.Branches :
-            if type(item) == FlowerBranch :
-                xy = math.sqrt(item.Vertices[-1].x ** 2 + item.Vertices[-1].z ** 2) - w
-                y = item.Vertices[-1].y - h
-                if xy ** 2 + y ** 2 > 1 :
-                    return True
-        return False
+        
 
     # 以下　モデル関係
     def CreateCurve(self) :
