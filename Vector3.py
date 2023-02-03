@@ -22,7 +22,7 @@ class Vector3(object) :
         return self
 
     def Normalized(a) :
-        '''　a を正規化したベクトルを返す '''
+        ''' a を正規化したベクトルを返す '''
         v = copy.copy(a)
         v.Normalize()
         return v

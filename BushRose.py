@@ -1,4 +1,3 @@
-from unittest import result
 import pymel.core as pm
 import math
 import random
@@ -33,7 +32,6 @@ class Section :
         # 葉の向き 後で決めるのでとりあえず 0   0 ~ 1
         self.LeafDir = 0
 
-        # 卒論 2.5章　 IdealV
         # 傾きと Dir の xz　に合わせた理想的なベクトルを求める
         mag_xz = math.sqrt(d.x ** 2 + d.z ** 2)
         ideal_x = d.x * math.cos(inc) / mag_xz
@@ -41,7 +39,6 @@ class Section :
         self.DirInc_y_xz = d.y / mag_xz
         self.IdealDir = v3.Vector3(ideal_x,math.sin(inc),ideal_z)
 
-        # 卒論 2.6章　最後の式の基底
         # 基底を変換しておく
         # 節の Dir を y 、　pos.xz を x として
         # 株の外側を 0 とした正規直交基底を作る
@@ -61,7 +58,6 @@ class Section :
     def NewBranchDir(self,theta) :
         ''' 新しい枝の向きを決める　'''
         
-        # 卒論 2.6　章　式５
         # 基底を変える前のベクトル
         d = v3.Vector3(0,0,0)
         d.x = math.cos(theta) * math.cos(self.LeafDir)
@@ -79,20 +75,18 @@ class Section :
 
         return result
     
-    # 近接している枝があるか再起的にチェック
+    # 近接している枝があるか再帰的にチェック
     def ProximityCheck(self,index,tree,prev) :
-        # 全部見た
+        # 全部見た場合
         if len(tree.Branches) <= index :
             return True
 
         branch = tree.Branches[index]
-        # 花首と
-        # 接続している枝と
-        # 親を共有する枝
-        # は無視 
+        # 花首、接続している枝、親を共有する枝　は無視 
         if type(branch) == FlowerNeck or index == prev or prev == branch.Prev :
             return self.ProximityCheck(index + 1,tree,prev)
         
+        # 枝の各節との距離をはかる
         for sec in branch.Sections :
             # 他の節との距離が規定以下の時
             if v3.Vector3.dist(sec.Tip(),self.Tip()) < killDiff :
@@ -149,8 +143,8 @@ class OldBranchSection(Section) :
         # 近接する枝がないかどうか
         Prox = self.ProximityCheck(0,tree,branch.Prev)
 
-        # 剪定範囲内 かつ 花がらつみ範囲内　か
-        # 節が短すぎると カーブ が成り立たないので, 短すぎる場合, 剪定範囲超えても少し出す
+        # 剪定範囲内 && 花がらつみ範囲内　か
+        # 節が短すぎると Maya側でカーブ が成り立たないので, 短すぎる場合, 剪定範囲超えても少し出す
         if dist <= sn and dist_xz + dist_y <= 1 and Prox :
             nextDir = \
                 v3.Vector3.WeightedAverage(d,self.IdealDir,self.Strength,dist ** self.WeightExponent) \
@@ -159,7 +153,7 @@ class OldBranchSection(Section) :
             nextDir = v3.Vector3.Normalize(nextDir)
             branch.Append(self.Tip(),nextDir,dist+1,l,ph,pw,inc,s,e,tree)
         else :
-            # 剪定範囲を超えるか、近接する枝がある場合
+            # 剪定範囲を超えるか、近接する枝がある場合　False
             if dist_xz + dist_y > 1 or not Prox :
                 branch.Next = False
             branch.Vertices.append(self.Tip())
@@ -171,10 +165,14 @@ class FlowerBranchSection(Section) :
 
         self.SectionNum = sn
 
-        # 識別するものだけ近接を識別する
+        # 識別する必要があるものだけ近接を識別し生成するか確かめる
         Prox = True if not check else self.ProximityCheck(0,branch.Tree,branch.Prev)
 
-        if dist <= sn and Prox :
+
+        if not Prox :
+            branch.Add = False
+        elif dist <= sn :
+            # 次の節の向き　すでに傾きが指定以上ならいじらない
             nextDir = \
                 v3.Vector3.WeightedAverage(d,self.IdealDir,self.Strength,dist ** self.WeightExponent) \
                 if math.tan(inc) > self.DirInc_y_xz \
@@ -182,10 +180,8 @@ class FlowerBranchSection(Section) :
             nextDir = v3.Vector3.Normalize(nextDir)
             branch.Append(self.Tip(),nextDir,dist+1,l,inc,s,e,check)
         else :
-            if not Prox :
-                branch.Add = False
-            else :
-                branch.Vertices.append(self.Tip())
+            # 先端の節の場合
+            branch.Vertices.append(self.Tip())
 
 #花首節クラス
 class FlowerNeckSection(Section) :
@@ -200,7 +196,8 @@ class FlowerNeckSection(Section) :
         else : 
             branch.Vertices.append(self.Tip())
 
-        
+
+# 枝　基底クラス
 class RoseBranch :
     def __init__(self,p,d,dist,sl,inc,s,e,prob,fprob,lh,cs,hs,thi,prev,tree,rand = True,name = 'Branch'):
         self.Vertices = [p,p.WeightedAverage(p + d * sl,100,1)]
@@ -228,7 +225,6 @@ class RoseBranch :
         self.Thickness = thi
         self.Random = rand
     
-    # 卒論 2.3章
     def SetLeaves(self) :
         ''' 葉の位置や枝が出るかどうか
         先端の節から行う
@@ -240,7 +236,7 @@ class RoseBranch :
             index = i
             item = self.Sections[index]
             '''
-            # 2/5葉序の場合
+            # 2/5葉序の場合は以下にする
             # ランダムの振れ幅
             leafDirRange = math.pi / 3 * 2
             leafDir = leafDir + (item.LeafSeed - 0.5) * leafDirRange 
@@ -292,16 +288,18 @@ class ShootBranch(RoseBranch) :
             prune_y = (item.Pos.y ** 2) / (tree.PruneHeight ** 2)
             prune = prune_xz + prune_y
 
-            # 卒論 2.6章 rand 周り
+            # 先端された枝の先端は花枝を出す
             if i <= 1 and nd.y > 0 and self.Prune :
                 FlowerBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,tree.FlowerStrength,tree.FlowerWeightExponent,\
                     self.Probability,self.CircleSmoothness,tree.FlowerSmoothness,tree.FlowerThickness,\
                     tree.FlowerSectionNum,tree.FlowerNum,1,self.Index,tree,rand)
+            # ランダムでそれ以外の節から一般枝を出す
             elif (i <= 1 or item.BranchSeed * 100 < self.Probability) and nd.y  > 0 :
                 OldBranch \
                     (item.Pos,nd,1,tree.BranchSectionLength,self.Inclination,self.Strength,self.WeightExponent, \
                     self.Probability,self.FlowerBranchProbability,self.LowestHeight,self.CircleSmoothness,tree.BranchSmoothness,tree.BranchThickness, \
                     tree.PruneHeight,tree.PruneWidth,tree.BranchSectionNum,self.Index,tree,rand)
+            # ランダムで花枝
             elif i <= 1 or (item.BranchSeed * 100 < self.Probability + self.FlowerBranchProbability and nd.y > 0 and prune > self.LowestHeight ** 2) :
                 FlowerBranch(item.Pos,nd,dist+1,tree.FlowerSectionLength,self.Inclination,tree.FlowerStrength,tree.FlowerWeightExponent,\
                     self.Probability,self.CircleSmoothness,tree.FlowerSmoothness,tree.FlowerThickness,\
@@ -309,7 +307,7 @@ class ShootBranch(RoseBranch) :
 
     
     def Append(self,tip,nd,dist,l,ph,pw,inc,s,e) :
-        '''節を引数に引数の節を リストに 追加する'''
+        '''節を引数に、引数の節と位置を配列に追加する'''
         self.Vertices.append(tip)
         self.Sections.append(ShootSection(tip,nd,dist,l,ph,pw,self.PruneHeight,self.PruneWidth,inc,s,e,self))
 
@@ -355,7 +353,7 @@ class OldBranch(RoseBranch) :
                             tree.FlowerSectionNum,tree.FlowerNum,1,self.Index,tree,rand)
 
     def Append(self,tip,nd,dist,l,ph,pw,inc,s,e,tree) :
-        '''節を引数に引数の節を リストに 追加する'''
+        '''節を引数に、引数の節と位置を配列に追加する'''
         self.Vertices.append(tip)
         self.Sections.append(OldBranchSection(tip,nd,dist,l,inc,s,e,self,ph,pw,self.SectionNum,tree))
 
@@ -366,7 +364,7 @@ class FlowerBranch(RoseBranch) :
         self.FlowerNum = fn
         self.SectionNum = sn
         self.Add = True
-        # 前の枝が花枝ならチェックしない
+        # 前の枝が花枝ならチェックしない  = 花数合わせのサブの花枝である
         check = True if type(tree.Branches[prev]) != RoseBranch else False
         # 節を追加していく
         self.Sections.append(FlowerBranchSection(p,d,ndist,sl,inc,s,e,self,sn,check))
@@ -401,10 +399,14 @@ class FlowerBranch(RoseBranch) :
 
 
     def Append(self,tip,nd,dist,l,inc,s,e,c) :
-        '''節を引数に引数の節を リストに 追加する'''
+        '''節を引数に、引数の節と位置を配列に追加する'''
         self.Vertices.append(tip)
         self.Sections.append(FlowerBranchSection(tip,nd,dist,l,inc,s,e,self,self.SectionNum,c))
 
+# 花首
+# 花枝と花のモデルを繋げる用
+# 花枝　1 ： 1.. 花首
+# 花首　1 ： 1  花のモデル
 class FlowerNeck(RoseBranch) :
     def __init__(self, p, d, dist, sl, inc, cs, hs, thi, prev, tree, rand=True, name='FlowerNeck'):
         super().__init__(p, d, dist, sl, inc, 0, 0, 0, 0, 0, cs, hs, thi, prev, tree, rand=rand, name=name)
@@ -481,7 +483,7 @@ class BushRoseTree :
         # モデル用
         self.Curves = []
         self.Cils = []
-
+        
     def Top(self) :
         result = 0
         for item in self.Branches :
@@ -493,8 +495,8 @@ class BushRoseTree :
     def isLarge(self, h, w) :
         for item in self.Branches :
             if type(item) == FlowerBranch :
-                xy = math.sqrt(item.Vertices[-1].x ** 2 + item.Vertices[-1].z ** 2) - w
-                y = item.Vertices[-1].y - h
+                xy = math.sqrt(item.Vertices[-1].x ** 2 + item.Vertices[-1].z ** 2) / w
+                y = item.Vertices[-1].y / h
                 if xy ** 2 + y ** 2 > 1 :
                     return True
         return False

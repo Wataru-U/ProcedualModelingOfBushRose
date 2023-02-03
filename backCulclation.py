@@ -3,7 +3,7 @@
 import pymel.core as pm
 import math
 import Vector3 as v3
-import BushRose_cube as br
+import BushRose as br
 
 # ウィンドウ用
 
@@ -175,18 +175,20 @@ class RoseParameter:
 
     # ちょうどいい高さを２部探索で探す
     def heightBinarySearch(self, upperLimit, LowerLimit) :
+        print(upperLimit,LowerLimit)
         h = (upperLimit + LowerLimit) / 2
         if upperLimit - LowerLimit <= 5 :
             self.pruneHeight = h
             self.pinchHeight = max(10,h/2)
         else :
-            self.Tree(h,self.Width,max(10,h/2),max(10,self.Width))
-            if self.Height.getValue() > self.brt.Top() :
+            self.Tree(h,self.Width.getValue(),max(10,h/2),max(10,self.Width.getValue()))
+            if self.Height.getValue() < self.brt.Top() :
                 self.heightBinarySearch(h,LowerLimit)
             else :
                 self.heightBinarySearch(upperLimit,h)
 
     def widthBinarySearch(self, upperLimit, LowerLimit) :
+        print(upperLimit,LowerLimit)
         w = (upperLimit + LowerLimit) / 2
         if upperLimit - LowerLimit <= 5 :
             self.pruneWidth = w
@@ -203,7 +205,7 @@ class RoseParameter:
     def CreateCurve(self,*args) :
         self.heightBinarySearch(self.Height.getValue(), 10)
         self.widthBinarySearch(self.Width.getValue(), 10)
-        self.Tree(self.pruneHeight,self.pruneWidth,self.ShootParam.pinchHeight.getValue(),self.ShootParam.pinchWidth.getValue())
+        self.Tree(self.pruneHeight,self.pruneWidth,self.pinchHeight,self.pinchWidth)
         self.brt.CreateCurve()
     
     def Tree(self, pruneHeight,pruneWidth,pinchHeight,pinchWidth) :

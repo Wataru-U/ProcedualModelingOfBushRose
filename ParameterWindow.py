@@ -108,7 +108,7 @@ class RoseParameter:
     def __init__(self,smoothness = 16,inclination = math.pi / 3, strength = 10,flowerStrength = 3,flowerExponent = 1.2,exponent = 1,lh = 0.1,prob = 5,FlowerBranchProbability = 20,b = OldBranchParameter(),sb = ShootParameter(),fb = FlowerBranchParameter()) :
         
         # window
-        self.window = pm.window("RoseWindow", t = "BushRose", w = 546, h = 100)
+        self.window = pm.window("RoseWindow2", t = "BushRose", w = 546, h = 100)
         pm.columnLayout(adj = True)
         with pm.horizontalLayout() :
             pm.text('Name')
